@@ -59,6 +59,7 @@ class MeshDrawer {
 
 		this.vertbuffer = gl.createBuffer();
 		this.texbuffer = gl.createBuffer();
+		this.normalbuffer = gl.createBuffer();
 
 		this.numTriangles = 0;
 
@@ -218,54 +219,51 @@ const meshVS = `
 			{
 				v_texCoord = texCoord;
 				v_normal = normal;
-				fragPos = vec3(mvp * vec4(pos, 1.0));
 
 				gl_Position = mvp * vec4(pos,1);
 			}`;
 
 // Fragment shader source code
 const meshFS = `
-			precision mediump float;
+    precision mediump float;
 
-			uniform bool showTex;
-			uniform bool enableLighting;
-			uniform sampler2D tex;
-			uniform vec3 color; 
-			uniform vec3 lightPos;
-			uniform float ambient;
+    uniform bool showTex;
+    uniform bool enableLighting;
+    uniform sampler2D tex;
+    uniform vec3 color; 
+    uniform vec3 lightPos;
+    uniform float ambient;
+    uniform float specIntensity; // New uniform for specular intensity
 
-			varying vec2 v_texCoord;
-			varying vec3 v_normal;
+    varying vec2 v_texCoord;
+    varying vec3 v_normal;
 
-			void main()
-			{
-				if(showTex && enableLighting)
-				{
-					// Ambient light
-					vec3 ambientLight = ambient * vec3(texture2D(tex, v_texCoord));
+    void main()
+    {
+        if(showTex && enableLighting)
+        {
+            vec3 norm = normalize(v_normal);
+            vec3 lightDir = normalize(lightPos);
+            float diff = max(dot(norm, -lightDir), 0.0); // Compute the diffuse factor
+			
+            vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
+            vec3 viewSource = normalize(lightPos);
+            vec3 reflectSource = reflect(-viewSource, norm);
+            float spec = pow(max(dot(viewDir, reflectSource), 0.0), specIntensity); // Use specIntensity from the slider
+            float light = (ambient + diff + spec);
+            gl_FragColor = texture2D(tex, v_texCoord) * light;
 
-					// Diffuse light
-					vec3 norm = normalize(v_normal);
-					vec3 lightDir = normalize(lightPos - fragPos);
-					float diff = max(dot(norm, lightDir), 0.0);
-					vec3 diffuseLight = diff * vec3(1);
-
-					// Combine ambient and diffuse
-					vec3 lighting = ambientLight + diffuseLight;
-
-					// Apply lighting to fragment color
-					gl_FragColor = vec4(lighting, 1.0) * texture2D(tex, v_texCoord);
-				}
-
-				else if(showTex)
-				{
-					gl_FragColor = texture2D(tex, v_texCoord);
-				}
-				else
-				{
-					gl_FragColor =  vec4(1.0, 0, 0, 1.0);
-				}
-			}`;
+        }
+        else if(showTex)
+        {
+            gl_FragColor = texture2D(tex, v_texCoord);
+        }
+        else
+        {
+            gl_FragColor = vec4(1.0, 0, 0, 1.0);
+        }
+    }
+`;
 
 // Light direction parameters for Task 2
 var lightX = 1;
