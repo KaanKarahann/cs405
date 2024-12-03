@@ -61,8 +61,8 @@ class MeshDrawer {
 		this.texbuffer = gl.createBuffer();
 
 		this.numTriangles = 0;
-		
-		// Initialize lighting uniforms
+
+
 		this.lightPosLoc = gl.getUniformLocation(this.prog, 'lightPos');
 		this.ambientLoc = gl.getUniformLocation(this.prog, 'ambient');
 		this.enableLightingLoc = gl.getUniformLocation(this.prog, 'enableLighting');
@@ -71,21 +71,22 @@ class MeshDrawer {
 	}
 
 	setMesh(vertPos, texCoords, normalCoords) {
-		// Bind vertex positions
+		// Bind vertex position buffer
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.vertbuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertPos), gl.STATIC_DRAW);
 	
-		// Bind texture coordinates
+		// Bind texture coordinates buffer
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.texbuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 	
-		// Bind normal vectors for lighting
+		// Bind normal vectors buffer for lighting
 		if (!this.normalbuffer) {
-			this.normalbuffer = gl.createBuffer(); // Create a buffer for normal vectors
+			this.normalbuffer = gl.createBuffer(); // Create a buffer for normals
 		}
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.normalbuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalCoords), gl.STATIC_DRAW);
 	
+		// Store the number of triangles in the mesh
 		this.numTriangles = vertPos.length / 3;
 	}
 	
@@ -106,12 +107,28 @@ class MeshDrawer {
 		gl.enableVertexAttribArray(this.texCoordLoc);
 		gl.vertexAttribPointer(this.texCoordLoc, 2, gl.FLOAT, false, 0, 0);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, this.texbuffer);
-    	gl.enableVertexAttribArray(this.texCoordLoc);
-    	gl.vertexAttribPointer(this.texCoordLoc, 2, gl.FLOAT, false, 0, 0);
+		/**
+		 * @Task2 : DONE You should update this function to handle the lighting
+		 */
+		// Update light position
+		if(lightX >= 20){
+			lightX = 20;
+		}
+		else if(lightX <= -20){
+			lightX = -20;
+		}
+		if(lightY >= 20){
+			lightY = 20;
+		}
+		else if(lightY <= -20){
+			lightY = -20;
+		}
+		gl.uniform3fv(this.lightPosLoc, [lightX, lightY, 0]);
 
-    	updateLightPos();
-    	gl.drawArrays(gl.TRIANGLES, 0, this.numTriangles);
+		updateLightPos();
+		gl.drawArrays(gl.TRIANGLES, 0, this.numTriangles);
+
+
 	}
 
 	// This method is called to set the texture of the mesh.
@@ -132,15 +149,13 @@ class MeshDrawer {
 		// Set texture parameters 
 		if (isPowerOf2(img.width) && isPowerOf2(img.height)) {
 			gl.generateMipmap(gl.TEXTURE_2D);
-		}
-		else {
+		} else {
 			// Handle non-power-of-two textures
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		}
-		
 
 		gl.useProgram(this.prog);
 		gl.activeTexture(gl.TEXTURE0);
@@ -149,30 +164,34 @@ class MeshDrawer {
 		gl.uniform1i(sampler, 0);
 	}
 
-	showTexture(show) {
+	showTexture(show) 
+	{
 		gl.useProgram(this.prog);
 		gl.uniform1i(this.showTexLoc, show);
 	}
 
-	enableLighting(show) {
+	enableLighting(show) 
+	{
 		gl.useProgram(this.prog);
 		gl.uniform1i(this.enableLightingLoc, show ? 1 : 0);
 	}
 	
 	
-	setAmbientLight(ambient) {
+	setAmbientLight(ambient) //intensity
+	{
 		gl.useProgram(this.prog);
 		gl.uniform1f(this.ambientLoc, ambient);
 	}
-	
 }
 
 
-function isPowerOf2(value) {
+function isPowerOf2(value) 
+{
 	return (value & (value - 1)) == 0;
 }
 
-function normalize(v, dst) {
+function normalize(v, dst) 
+{
 	dst = dst || new Float32Array(3);
 	var length = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 	// make sure we don't divide by 0.
@@ -199,48 +218,54 @@ const meshVS = `
 			{
 				v_texCoord = texCoord;
 				v_normal = normal;
+				fragPos = vec3(mvp * vec4(pos, 1.0));
 
 				gl_Position = mvp * vec4(pos,1);
 			}`;
 
 // Fragment shader source code
-
 const meshFS = `
-precision mediump float;
+			precision mediump float;
 
-uniform bool showTex;
-uniform bool enableLighting;
-uniform sampler2D tex;
-uniform vec3 color; 
-uniform vec3 lightPos; // Position of the light source
-uniform float ambient; // Ambient light intensity
+			uniform bool showTex;
+			uniform bool enableLighting;
+			uniform sampler2D tex;
+			uniform vec3 color; 
+			uniform vec3 lightPos;
+			uniform float ambient;
 
-varying vec2 v_texCoord;
-varying vec3 v_normal;
+			varying vec2 v_texCoord;
+			varying vec3 v_normal;
 
-void main()
-{
-    vec3 norm = normalize(v_normal); // Normalize the surface normal
-    vec3 lightDir = normalize(lightPos); // Direction of the light
+			void main()
+			{
+				if(showTex && enableLighting)
+				{
+					// Ambient light
+					vec3 ambientLight = ambient * vec3(texture2D(tex, v_texCoord));
 
-    // Ambient Lighting
-    vec3 ambientLight = ambient * color;
+					// Diffuse light
+					vec3 norm = normalize(v_normal);
+					vec3 lightDir = normalize(lightPos - fragPos);
+					float diff = max(dot(norm, lightDir), 0.0);
+					vec3 diffuseLight = diff * vec3(1);
 
-    // Diffuse Lighting
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuseLight = diff * color;
+					// Combine ambient and diffuse
+					vec3 lighting = ambientLight + diffuseLight;
 
-    vec3 resultColor = ambientLight + diffuseLight;
+					// Apply lighting to fragment color
+					gl_FragColor = vec4(lighting, 1.0) * texture2D(tex, v_texCoord);
+				}
 
-    if (showTex && enableLighting) {
-        vec4 texColor = texture2D(tex, v_texCoord);
-        gl_FragColor = vec4(resultColor * texColor.rgb, texColor.a);
-    } else if (showTex) {
-        gl_FragColor = texture2D(tex, v_texCoord);
-    } else {
-        gl_FragColor = vec4(resultColor, 1.0);
-    }
-}`;
+				else if(showTex)
+				{
+					gl_FragColor = texture2D(tex, v_texCoord);
+				}
+				else
+				{
+					gl_FragColor =  vec4(1.0, 0, 0, 1.0);
+				}
+			}`;
 
 // Light direction parameters for Task 2
 var lightX = 1;
