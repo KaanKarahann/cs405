@@ -186,6 +186,7 @@
                  *@task3 : add rotation to mars on z-axis.
                     the rotation should be 1.5 * zRotation 
                 */
+                marsNode.trs.setRotation(0, 0, zRotation * 1.5); // Mars rotates 1.5 times Sun's rotation
 
                 sunNode.draw(mvp, modelViewMatrix, normalMatrix, modelMatrix);
                 requestAnimationFrame(renderLoop);
@@ -237,6 +238,14 @@
                  * @link : https://i.imgur.com/Mwsa16j.jpeg
                  * 
                  */
+                // Mars (Task 3)
+                marsMeshDrawer = new MeshDrawer();
+                marsMeshDrawer.setMesh(sphereBuffers.positionBuffer, sphereBuffers.texCoordBuffer, sphereBuffers.normalBuffer);
+                setTextureImg(marsMeshDrawer, "https://i.imgur.com/Mwsa16j.jpeg"); // Mars texture
+                marsTrs = new TRS();
+                marsTrs.setTranslation(-6, 0, 0); // Translate Mars relative to Sun
+                marsTrs.setScale(0.35, 0.35, 0.35); // Scale Mars
+                marsNode = new SceneNode(marsMeshDrawer, marsTrs, sunNode); // Mars as child of Sun
 
                 renderLoop();
             };

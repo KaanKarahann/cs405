@@ -171,7 +171,13 @@ void main()
 	// PLEASE DO NOT CHANGE ANYTHING ABOVE !!!
 	// Calculate the diffuse and specular lighting below.
 
+	// Diffuse lighting
+    diff = max(dot(lightdir, normal), 0.0);
 
+    // Specular lighting
+    vec3 viewDir = normalize(-vPosition); // View direction (camera is at origin)
+    vec3 reflectDir = reflect(-lightdir, normal); // Reflection vector
+    spec = pow(max(dot(viewDir, reflectDir), 0.0), phongExp);
 
 	// PLEASE DO NOT CHANGE ANYTHING BELOW !!!
 	/////////////////////////////////////////////////////////////////////////////

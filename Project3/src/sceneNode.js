@@ -1,12 +1,3 @@
-/**
- * @class SceneNode
- * @desc A SceneNode is a node in the scene graph.
- * @property {MeshDrawer} meshDrawer - The MeshDrawer object to draw
- * @property {TRS} trs - The TRS object to transform the MeshDrawer
- * @property {SceneNode} parent - The parent node
- * @property {Array} children - The children nodes
- */
-
 class SceneNode {
     constructor(meshDrawer, trs, parent = null) {
         this.meshDrawer = meshDrawer;
@@ -24,21 +15,22 @@ class SceneNode {
     }
 
     draw(mvp, modelView, normalMatrix, modelMatrix) {
-        /**
-         * @Task1 : Implement the draw function for the SceneNode class.
-         */
-        
-        var transformedMvp = mvp;
-        var transformedModelView = modelView;
-        var transformedNormals = normalMatrix;
-        var transformedModel = modelMatrix;
+        // Get the transformation matrix from the TRS object
+        const transformationMatrix = this.trs.getTransformationMatrix();
 
-        // Draw the MeshDrawer
+        const transformedMvp = MatrixMult(mvp, transformationMatrix);
+        const transformedModelView = MatrixMult(modelView, transformationMatrix);
+        const transformedNormals = MatrixMult(normalMatrix, transformationMatrix);
+        const transformedModel = MatrixMult(modelMatrix, transformationMatrix);
+
+        // Draw the mesh
         if (this.meshDrawer) {
             this.meshDrawer.draw(transformedMvp, transformedModelView, transformedNormals, transformedModel);
         }
+        
+        // Draw the children
+        for (const child of this.children) {
+            child.draw(transformedMvp, transformedModelView, transformedNormals, transformedModel);
+        }
     }
-
-    
-
 }
